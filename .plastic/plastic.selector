@@ -1,0 +1,4 @@
+repository "Akaya 2025-04-22_18-08-22/Akaya@4673970389780@cloud"
+  path "/"
+    br "/main"
+    co "/main"
