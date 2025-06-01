@@ -13,6 +13,10 @@ public class TrampaFlecha : MonoBehaviour
     public float escalaMaxima = 1.5f;                 // Escala máxima de la flecha (al llegar al jugador)
     public float fuerzaImpacto = 20f;                 // Fuerza aplicada al jugador al impactar
     
+    [Header("Configuración de Seguimiento")]
+    public float factorSeguimiento = 15f;             // Qué tan rápido la flecha se centra horizontalmente
+    public float distanciaImpacto = 0.4f;            // Distancia horizontal para considerar impacto
+    
     [Header("Configuración de Activación")]
     public float tiempoEsperaAntes = 0.5f;            // Tiempo antes de disparar la flecha
     public bool puedeReactivarse = false;             // Si la trampa puede activarse múltiples veces
@@ -84,7 +88,7 @@ public class TrampaFlecha : MonoBehaviour
     private void OnTriggerExit2D(Collider2D other)
     {
         jugadorEnRango = false;
-        jugadorTransform = null;
+        // NO eliminamos jugadorTransform aquí para que la flecha pueda seguir al jugador
         
         // Detener efecto de detección si no está activada
         if (!trampaActivada)
@@ -157,42 +161,62 @@ public class TrampaFlecha : MonoBehaviour
     private IEnumerator MoverFlecha(GameObject flecha)
     {
         Vector3 posicionInicial = flecha.transform.position;
-        Vector3 posicionObjetivo = jugadorTransform.position;
+        Transform jugadorObjetivo = jugadorTransform; // Guardar referencia independiente
         
-        // Calcular dirección y rotación
-        Vector3 direccion = Vector3.down; // Siempre hacia abajo
-        
-        float distanciaTotal = Vector3.Distance(posicionInicial, posicionObjetivo);
-        float tiempoViaje = distanciaTotal / velocidadFlecha;
-        float tiempoTranscurrido = 0f;
-        
-        while (tiempoTranscurrido < tiempoViaje)
+        while (flecha != null && jugadorObjetivo != null)
         {
-            // Actualizar posición objetivo (seguir al jugador)
-            if (jugadorTransform != null)
-            {
-                posicionObjetivo = jugadorTransform.position;
-                direccion = (posicionObjetivo - flecha.transform.position).normalized;
-                
-            }
+            // Calcular la posición objetivo (parte superior del jugador)
+            Vector3 posicionObjetivo = jugadorObjetivo.position;
             
-            // Mover la flecha
-            flecha.transform.position += direccion * velocidadFlecha * Time.deltaTime;
+            // Mover la flecha horizontalmente hacia el centro X del jugador
+            Vector3 posicionActual = flecha.transform.position;
+            
+            // Calcular diferencia en X para centrar la flecha
+            float diferenciaX = posicionObjetivo.x - posicionActual.x;
+            
+            // Movimiento horizontal hacia el centro del jugador (más rápido)
+            float movimientoX = Mathf.Sign(diferenciaX) * Mathf.Min(Mathf.Abs(diferenciaX), factorSeguimiento * Time.deltaTime);
+            
+            // Movimiento vertical constante hacia abajo
+            float movimientoY = -velocidadFlecha * Time.deltaTime;
+            
+            // Aplicar movimiento
+            flecha.transform.position = new Vector3(
+                posicionActual.x + movimientoX,
+                posicionActual.y + movimientoY,
+                posicionActual.z
+            );
+            
+            // La flecha mantiene su rotación original (no rota)
             
             // Escalar la flecha según la proximidad al jugador
             float distanciaActual = Vector3.Distance(flecha.transform.position, posicionObjetivo);
-            float progreso = 1f - (distanciaActual / distanciaTotal);
-            float escalaActual = Mathf.Lerp(escalaMinima, escalaMaxima, progreso);
-            flecha.transform.localScale = Vector3.one * escalaActual;
+            float distanciaTotal = Vector3.Distance(posicionInicial, posicionObjetivo);
             
-            // Verificar si llegó al jugador
-            if (distanciaActual <= 0.5f)
+            // Evitar división por cero
+            if (distanciaTotal > 0)
             {
-                ImpactarJugador(direccion);
+                float progreso = 1f - (distanciaActual / distanciaTotal);
+                progreso = Mathf.Clamp01(progreso);
+                float escalaActual = Mathf.Lerp(escalaMinima, escalaMaxima, progreso);
+                flecha.transform.localScale = Vector3.one * escalaActual;
+            }
+            
+            // Verificar si llegó a la altura del jugador (impacto por arriba)
+            if (flecha.transform.position.y <= posicionObjetivo.y + 0.2f && 
+                Mathf.Abs(flecha.transform.position.x - posicionObjetivo.x) <= distanciaImpacto)
+            {
+                ImpactarJugadorDirecto(jugadorObjetivo, Vector3.down); // Siempre empuja hacia abajo
                 break;
             }
             
-            tiempoTranscurrido += Time.deltaTime;
+            // Verificar si la flecha pasó muy por debajo del jugador
+            if (flecha.transform.position.y < posicionObjetivo.y - 2f)
+            {
+                Debug.Log("Flecha pasó por debajo del jugador, destruyendo...");
+                break;
+            }
+            
             yield return null;
         }
         
@@ -203,23 +227,28 @@ public class TrampaFlecha : MonoBehaviour
         }
     }
     
-    private void ImpactarJugador(Vector3 direccionFlecha)
+    private void ImpactarJugadorDirecto(Transform jugadorObj, Vector3 direccionFlecha)
     {
-        if (jugadorTransform == null) return;
+        if (jugadorObj == null) return;
         
         // Reproducir sonido de impacto
         ReproducirSonido(sonidoImpacto);
         
         // Aplicar fuerza al jugador
-        Rigidbody2D jugadorRb = jugadorTransform.GetComponent<Rigidbody2D>();
+        Rigidbody2D jugadorRb = jugadorObj.GetComponent<Rigidbody2D>();
         if (jugadorRb != null)
         {
             jugadorRb.AddForce(direccionFlecha * fuerzaImpacto, ForceMode2D.Impulse);
         }
         
         // También puedes añadir daño aquí si es necesario
-        // SistemaVida vida = jugadorTransform.GetComponent<SistemaVida>();
+        // SistemaVida vida = jugadorObj.GetComponent<SistemaVida>();
         // if (vida != null) vida.RecibirDaño(dañoFlecha);
+    }
+    
+    private void ImpactarJugador(Vector3 direccionFlecha)
+    {
+        ImpactarJugadorDirecto(jugadorTransform, direccionFlecha);
     }
     
     private void ActivarEfectoDeteccion()
@@ -269,18 +298,8 @@ public class TrampaFlecha : MonoBehaviour
                 Gizmos.matrix = transform.localToWorldMatrix;
                 Gizmos.DrawCube(boxCollider.offset, boxCollider.size);
             }
-            else if (collider is CircleCollider2D)
-            {
-                CircleCollider2D circleCollider = collider as CircleCollider2D;
-                Gizmos.DrawSphere(transform.position + (Vector3)circleCollider.offset, circleCollider.radius);
-            }
+            
         }
         
-        // Mostrar línea desde propulsor
-        if (propulsor != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(propulsor.position, 0.2f);
-        }
     }
 }

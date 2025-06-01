@@ -345,7 +345,7 @@ public class FantasmaSeguidor : MonoBehaviour
         if (desvanecerConDistancia && jugador != null)
         {
             float distancia = Vector3.Distance(transform.position, jugador.position);
-            float porcentajeDistancia = Mathf.Clamp01(distancia / distanciaMaxima);
+            float porcentajeDistancia = Mathf.Clamp01(2*distancia / distanciaMaxima);
             
             // Invertir el porcentaje para que sea más opaco cuando está cerca
             float alpha = Mathf.Lerp(alphaMaximo, alphaMinimo, porcentajeDistancia);
