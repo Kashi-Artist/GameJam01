@@ -1,0 +1,56 @@
+# Archivos y carpetas generadas por Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+UserSettings/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de Visual Studio
+.vs/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+
+# Archivos de Rider
+.idea/
+*.sln.iml
+
+# Archivos de configuración local
+*.local
+*.swp
+
+# Cache del paquete de Unity
+Packages/com.unity.package-manager-ui/
+
+# Auto-generados por Unity
+*.generated.cs
+
+# Builds WebGL locales
+Builds/WebGL/
+
+# Archivos del sistema operativo Linux
+*~
+
+# Git LFS
+*.psd
+*.png
+*.jpg
+*.fbx
+*.mp4
+*.wav
+*.mp3
